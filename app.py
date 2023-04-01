@@ -1,35 +1,37 @@
 import os
+from flask import Flask, request, jsonify, render_template, redirect, url_for
+from twilio.rest import Client
 
-from flask import Flask, request, jsonify, render_template, redirect, url_for,send_file
-from faker import Faker
-from twilio.jwt.access_token import AccessToken
-from twilio.jwt.access_token.grants import SyncGrant
-from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-fake = Faker()
 
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# Add your Twilio credentials
-@app.route('/token')
-def generate_token():
-    TWILIO_ACCOUNT_SID = 'AC35286ab14ae8ad3e5315b271b846f786'
-    TWILIO_SYNC_SERVICE_SID = 'IS9f027b3ebbbdd9e8cd9bff177f905143'
-    TWILIO_API_KEY = 'SKf43702c2b5bc2b5e6ca4a8c7d3b60546'
-    TWILIO_API_SECRET = '2zaxPG5UgaL7oWuJoXYExuhdtdAWGS9j'
 
-    username = request.args.get('username', fake.user_name())
+# Define Verify_otp() function
+@app.route('/login' , methods=['POST'])
+def verify_otp():
+    username = request.form['username']
+    password = request.form['password']
+    mobile_number = request.form['number']
 
-    # create access token with credentials
-    token = AccessToken(TWILIO_ACCOUNT_SID, TWILIO_API_KEY, TWILIO_API_SECRET, identity=username)
-    # create a Sync grant and add to token
-    sync_grant_access = SyncGrant(TWILIO_SYNC_SERVICE_SID)
-    token.add_grant(sync_grant_access)
-    return jsonify(identity=username, token=token.to_jwt().decode())
+    if username == 'verify' and password == '12345':   
+        account_sid = 'AC35286ab14ae8ad3e5315b271b846f786'
+        auth_token = 'bce26ce3d137b5f1b23abfa9ae71b998'
+        client = Client(account_sid, auth_token)
+
+        verification = client.verify \
+            .services('IS9f027b3ebbbdd9e8cd9bff177f905143') \
+            .verifications \
+            .create(to=mobile_number, channel='sms')
+
+        print(verification.status)
+        return render_template('otp_verify.html')
+    else:
+         return render_template('otp_error.html')
 
 # Write the code here
 @app.route('/', methods=['POST'])
@@ -42,7 +44,10 @@ def download_text():
 
     return send_file(path_to_store_txt, as_attachment=True)
     
-        
+    if verification_check.status == "pending":
+    	return render_template('otp_error.html')
+    else:
+    	return redirect("https://project-c272.onrender.com/")
 
     
 
